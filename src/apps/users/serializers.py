@@ -27,9 +27,10 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "avatar_url",
             "membership_tier",
+            "is_staff",
             "date_joined",
         ]
-        read_only_fields = ["id", "is_verified", "membership_tier", "date_joined"]
+        read_only_fields = ["id", "is_verified", "membership_tier", "is_staff", "date_joined"]
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

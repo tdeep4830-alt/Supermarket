@@ -11,7 +11,7 @@ import { ProductsPage } from '@/features/products';
 import { CartButton, CartDrawer } from '@/features/cart';
 import { CheckoutPage, OrderSuccessPage } from '@/features/checkout';
 import { LoginPage, RegisterPage, ProtectedRoute } from '@/features/auth';
-import { AdminRoute, AdminLayout, InventoryPage } from '@/features/admin';
+import { AdminRoute, InventoryPage } from '@/features/admin';
 import { ToastContainer } from '@/components/Toast';
 import { useAuthStore, useUser, useIsAuthenticated, useAddToast } from '@/store';
 import type { PlaceOrderResponse } from '@/types';

@@ -8,8 +8,7 @@
 
 import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../auth/store/authStore';
-import { logger } from '../../../utils/logger';
+import { useAuthStore } from '../../../store/authStore';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -17,16 +16,16 @@ interface AdminRouteProps {
 
 export function AdminRoute({ children }: AdminRouteProps): JSX.Element {
   const location = useLocation();
-  const { currentUser, isLoading } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
 
   useEffect(() => {
-    if (!isLoading && currentUser && !currentUser.is_staff) {
-      logger.warn('Non-admin user attempted to access admin route', {
-        userId: currentUser.id,
+    if (!isLoading && user && !user.is_staff) {
+      console.warn('Non-admin user attempted to access admin route', {
+        userId: user.id,
         path: location.pathname,
       });
     }
-  }, [currentUser, isLoading, location]);
+  }, [user, isLoading, location]);
 
   if (isLoading) {
     return (
@@ -40,12 +39,12 @@ export function AdminRoute({ children }: AdminRouteProps): JSX.Element {
   }
 
   // Not logged in
-  if (!currentUser) {
+  if (!user) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   // Logged in but not admin
-  if (!currentUser.is_staff) {
+  if (!user.is_staff) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">

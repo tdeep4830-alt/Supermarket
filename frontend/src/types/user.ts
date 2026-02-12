@@ -20,6 +20,7 @@ export interface User {
   is_verified: boolean;
   avatar_url: string | null;
   membership_tier: MembershipTier;
+  is_staff: boolean;
   date_joined: ISODateTime;
 }
 

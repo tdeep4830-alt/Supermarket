@@ -17,6 +17,9 @@ from rest_framework.views import APIView
 
 from common.logging import get_logger
 
+# Import Stock for exception handling
+from apps.products.models import Stock
+
 from .serializers import (
     AdminOrdersListResponseSerializer,
     InventoryListResponseSerializer,

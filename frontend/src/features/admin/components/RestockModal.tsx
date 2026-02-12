@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { useRestockProduct } from '../hooks/useAdminInventory';
-import { InventoryItem } from '../types';
+import type { InventoryItem } from '../types';
 
 interface RestockModalProps {
   product: InventoryItem;

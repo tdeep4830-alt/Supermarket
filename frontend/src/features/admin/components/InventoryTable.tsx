@@ -9,10 +9,10 @@
 
 import { useState } from 'react';
 import { useAdminInventory } from '../hooks/useAdminInventory';
-import { useStockFlash, getStockBadgeColor, getProgressBarColor } from '../../products/hooks/useStockFlash';
+import { useStockFlash, /* getStockBadgeColor, */ getProgressBarColor } from '../../products/hooks/useStockFlash';
 import { RestockModal } from './RestockModal';
-import { InventoryItem } from '../types';
-import { formatCurrency } from '../../../utils/format';
+import type { InventoryItem } from '../types';
+import { formatPrice } from '../../../utils/format';
 
 interface InventoryTableProps {
   searchTerm?: string;
@@ -132,7 +132,7 @@ function InventoryRow({ item, onRestock }: InventoryRowProps): JSX.Element {
     criticalThreshold: 10,
   });
 
-  const badgeColor = getStockBadgeColor(stockFlash);
+  // const badgeColor = getStockBadgeColor(stockFlash);
   const progressColor = getProgressBarColor(stockFlash);
 
   const getStatusDisplay = () => {
@@ -181,7 +181,7 @@ function InventoryRow({ item, onRestock }: InventoryRowProps): JSX.Element {
         />
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm text-gray-900">{formatCurrency(item.price)}</div>
+        <div className="text-sm text-gray-900">{formatPrice(item.price)}</div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDisplay.bgColor} ${statusDisplay.color}`}>

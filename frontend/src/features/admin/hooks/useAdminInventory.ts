@@ -5,9 +5,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../../../api/client';
-import { showToast } from '../../../store/toastStore';
-import { logger } from '../../../utils/logger';
+import apiClient from '../../../api/client';
+import { useAddToast } from '../../../store/toastStore';
 
 export interface InventoryItem {
   id: string;
@@ -65,6 +64,7 @@ export function useAdminInventory(search?: string, status?: string) {
  */
 export function useRestockProduct() {
   const queryClient = useQueryClient();
+  const addToast = useAddToast();
 
   return useMutation({
     mutationFn: async ({ productId, quantity }: RestockVariables): Promise<RestockResponse> => {
@@ -77,13 +77,12 @@ export function useRestockProduct() {
       // Invalidate and refetch inventory list
       queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
 
-      showToast({
+      addToast({
         type: 'success',
-        title: 'Restock Successful',
         message: `Added ${data.data.quantity_added} units to ${data.data.new_quantity - data.data.quantity_added} → ${data.data.new_quantity}`,
       });
 
-      logger.info('Product restocked', {
+      console.info('Product restocked', {
         productId: data.data.product_id,
         quantity: data.data.quantity_added,
         newStock: data.data.new_quantity,
@@ -92,13 +91,12 @@ export function useRestockProduct() {
     onError: (error: any) => {
       const message = error.response?.data?.error?.message || 'Failed to restock product';
 
-      showToast({
+      addToast({
         type: 'error',
-        title: 'Restock Failed',
         message,
       });
 
-      logger.error('Restock failed', { error: error.message });
+      console.error('Restock failed', { error: error.message });
     },
   });
 }
