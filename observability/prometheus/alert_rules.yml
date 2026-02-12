@@ -1,0 +1,146 @@
+# =============================================================================
+# Prometheus Alert Rules
+# Ref: .blueprint/infra.md §8C - Monitoring & Alerting
+# =============================================================================
+
+groups:
+  # ---------------------------------------------------------------------------
+  # API Error Rate Alerts
+  # ---------------------------------------------------------------------------
+  - name: api_error_alerts
+    rules:
+      # Alert: Orders API Error Rate > 5%
+      - alert: OrdersAPIHighErrorRate
+        expr: |
+          (
+            sum(rate(django_http_responses_total_by_status_view_method_total{view=~".*order.*", status=~"5.."}[5m]))
+            /
+            sum(rate(django_http_responses_total_by_status_view_method_total{view=~".*order.*"}[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: orders
+        annotations:
+          summary: "High error rate on Orders API"
+          description: "Orders API error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://wiki.example.com/runbooks/orders-api-errors"
+
+      # Alert: Any API Error Rate > 10%
+      - alert: APIHighErrorRate
+        expr: |
+          (
+            sum(rate(django_http_responses_total_by_status_view_method_total{status=~"5.."}[5m]))
+            /
+            sum(rate(django_http_responses_total_by_status_view_method_total[5m]))
+          ) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          service: all
+        annotations:
+          summary: "High error rate across all APIs"
+          description: "Overall API error rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+
+  # ---------------------------------------------------------------------------
+  # API Latency Alerts
+  # ---------------------------------------------------------------------------
+  - name: api_latency_alerts
+    rules:
+      # Alert: Orders API P95 Latency > 500ms
+      - alert: OrdersAPIHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(django_http_requests_latency_seconds_by_view_method_bucket{view=~".*order.*"}[5m])) by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: orders
+        annotations:
+          summary: "High latency on Orders API"
+          description: "Orders API P95 latency is {{ $value | humanizeDuration }} (threshold: 500ms)"
+
+      # Alert: Any API P99 Latency > 2s
+      - alert: APIVeryHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(django_http_requests_latency_seconds_by_view_method_bucket[5m])) by (le)
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: critical
+          service: all
+        annotations:
+          summary: "Very high latency across APIs"
+          description: "API P99 latency is {{ $value | humanizeDuration }} (threshold: 2s)"
+
+  # ---------------------------------------------------------------------------
+  # Database Connection Alerts
+  # ---------------------------------------------------------------------------
+  - name: database_alerts
+    rules:
+      # Alert: DB Connection Pool Exhaustion
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          django_db_execute_total{} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection issues"
+          description: "No database queries executed in the last minute"
+
+  # ---------------------------------------------------------------------------
+  # Request Rate Alerts
+  # ---------------------------------------------------------------------------
+  - name: traffic_alerts
+    rules:
+      # Alert: Sudden traffic spike (3x normal)
+      - alert: TrafficSpike
+        expr: |
+          sum(rate(django_http_requests_total_by_method_total[5m]))
+          /
+          sum(rate(django_http_requests_total_by_method_total[1h] offset 5m))
+          > 3
+        for: 5m
+        labels:
+          severity: warning
+          service: traffic
+        annotations:
+          summary: "Traffic spike detected"
+          description: "Request rate is {{ $value | humanize }}x higher than the last hour average"
+
+      # Alert: No traffic (service might be down)
+      - alert: NoTraffic
+        expr: |
+          sum(rate(django_http_requests_total_by_method_total[5m])) == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: traffic
+        annotations:
+          summary: "No traffic detected"
+          description: "No HTTP requests received in the last 5 minutes"
+
+  # ---------------------------------------------------------------------------
+  # Business Metrics Alerts
+  # ---------------------------------------------------------------------------
+  - name: business_alerts
+    rules:
+      # Alert: High rate of stock conflicts (flash sale issues)
+      - alert: HighStockConflictRate
+        expr: |
+          (
+            sum(rate(django_http_responses_total_by_status_view_method_total{view=~".*order.*", status="409"}[5m]))
+            /
+            sum(rate(django_http_responses_total_by_status_view_method_total{view=~".*order.*", method="POST"}[5m]))
+          ) > 0.20
+        for: 2m
+        labels:
+          severity: warning
+          service: orders
+        annotations:
+          summary: "High stock conflict rate during flash sale"
+          description: "{{ $value | humanizePercentage }} of orders are failing due to stock conflicts"

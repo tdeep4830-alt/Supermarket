@@ -1,0 +1,23 @@
+# =============================================================================
+# Grafana Datasource Provisioning
+# Ref: .blueprint/infra.md §8C - Metrics Monitoring
+# =============================================================================
+
+apiVersion: 1
+
+datasources:
+  # ---------------------------------------------------------------------------
+  # Prometheus Datasource
+  # ---------------------------------------------------------------------------
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.48.0
+      timeInterval: "15s"

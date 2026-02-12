@@ -1,0 +1,145 @@
+# =============================================================================
+# Online Supermarket - Docker Compose (Local Development)
+# Ref: .blueprint/infra.md §2B, §8 (Observability)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Web Application (Django)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      target: development
+    container_name: supermarket_web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app
+      - ./tests:/app/tests
+      - ./pytest.ini:/app/pytest.ini
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-dev-key-for-local-only
+      - DJANGO_SETTINGS_MODULE=core.settings.development
+      - POSTGRES_DB=supermarket
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      # Note: PROMETHEUS_MULTIPROC_DIR is only needed for production (gunicorn with workers)
+      # For development with runserver, we don't need it
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - supermarket_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Database (PostgreSQL 16)
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: supermarket_db
+    environment:
+      - POSTGRES_DB=supermarket
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d supermarket"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - supermarket_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Cache & Queue (Redis 7)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: supermarket_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - supermarket_network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Prometheus (Metrics Collection) - Ref: infra.md §8C
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: supermarket_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - web
+    networks:
+      - supermarket_network
+    # Use extra_hosts to add a clean alias for the web container
+    extra_hosts:
+      - "django-app:host-gateway"
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Grafana (Visualization & Dashboards) - Ref: infra.md §8C
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: supermarket_grafana
+    ports:
+      - "3002:3000"  # Changed from 3001 (used by React frontend)
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3002
+      # Use unified alerting (Grafana 9+)
+      - GF_ALERTING_ENABLED=false
+      - GF_UNIFIED_ALERTING_ENABLED=true
+    depends_on:
+      - prometheus
+    networks:
+      - supermarket_network
+    restart: unless-stopped
+
+# -----------------------------------------------------------------------------
+# Networks & Volumes
+# -----------------------------------------------------------------------------
+networks:
+  supermarket_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

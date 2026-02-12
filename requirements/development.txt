@@ -1,0 +1,18 @@
+# =============================================================================
+# Online Supermarket - Development Requirements
+# Ref: .blueprint/infra.md §7
+# =============================================================================
+
+-r base.txt
+
+# Testing (Ref: infra.md §7 - Automated Testing)
+pytest>=8.0,<9.0
+pytest-django>=4.7,<5.0
+pytest-cov>=4.1,<5.0
+
+# Linting & Formatting (Ref: protocol.md §2C)
+ruff>=0.2,<1.0
+
+# Debug Tools
+django-debug-toolbar>=4.2,<5.0
+ipython>=8.0,<9.0

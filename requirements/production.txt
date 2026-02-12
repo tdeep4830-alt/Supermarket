@@ -1,0 +1,12 @@
+# =============================================================================
+# Online Supermarket - Production Requirements
+# Ref: .blueprint/infra.md §4, §8
+# =============================================================================
+
+-r base.txt
+
+# Database URL Parsing (Ref: infra.md §5)
+dj-database-url>=2.1,<3.0
+
+# Error Tracking & APM (Ref: infra.md §8B)
+sentry-sdk[django]>=1.39,<2.0

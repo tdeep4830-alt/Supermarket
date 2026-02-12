@@ -1,0 +1,19 @@
+# =============================================================================
+# Grafana Dashboard Provisioning
+# Ref: .blueprint/infra.md §8C - Metrics Monitoring
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: 'Online Supermarket'
+    orgId: 1
+    folder: 'Supermarket'
+    folderUid: 'supermarket'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

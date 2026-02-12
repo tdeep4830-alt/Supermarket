@@ -1,0 +1,232 @@
+Services
+
+已建立文件                                                                                                                         
+  ┌─────────────────────────────────┬──────────────────────────────┐                                                                 
+  │              文件               │             功能             │                                                                 
+  ├─────────────────────────────────┼──────────────────────────────┤                                                                 
+  │ products/constants.py           │ Redis Key 常量定義           │                                                                 
+  ├─────────────────────────────────┼──────────────────────────────┤                                                                 
+  │ products/services.py            │ 庫存扣減/恢復/同步服務       │                                                                 
+  ├─────────────────────────────────┼──────────────────────────────┤                                                                 
+  │ products/selectors.py           │ 商品/庫存讀取（Cache-Aside） │                                                                 
+  ├─────────────────────────────────┼──────────────────────────────┤                                                                 
+  │ tests/concurrency/test_stock.py │ 併發測試框架                 │                                                                 
+  └─────────────────────────────────┴──────────────────────────────┘                                                                 
+  Services 清單                                                                                                                      
+  ┌────────────────────────────┬────────────────────────────────────┬──────────────┐                                                 
+  │          Service           │                功能                │     規範     │                                                 
+  ├────────────────────────────┼────────────────────────────────────┼──────────────┤                                                 
+  │ decrease_stock()           │ 扣減庫存（Redis + DB 雙寫 + 回滾） │ §1B, §2A, §3 │                                                 
+  ├────────────────────────────┼────────────────────────────────────┼──────────────┤                                                 
+  │ restore_stock()            │ 恢復庫存（取消訂單用）             │ §1B          │                                                 
+  ├────────────────────────────┼────────────────────────────────────┼──────────────┤                                                 
+  │ sync_stock_to_redis()      │ DB → Redis 同步                    │ §2A          │                                                 
+  ├────────────────────────────┼────────────────────────────────────┼──────────────┤                                                 
+  │ check_order_rate_limit()   │ 下單限流（1秒1次）                 │ §2D          │                                                 
+  ├────────────────────────────┼────────────────────────────────────┼──────────────┤                                                 
+  │ bulk_sync_stock_to_redis() │ 批量同步                           │ -            │                                                 
+  └────────────────────────────┴────────────────────────────────────┴──────────────┘                                                 
+  Selectors 清單                                                                                                                     
+  ┌──────────────────────────┬─────────────────────────┐                                                                             
+  │         Selector         │          功能            │                                                                             
+  ├──────────────────────────┼─────────────────────────┤                                                                             
+  │ get_stock_quantity()     │ 取得庫存（Cache-Aside）   │                                                                             
+  ├──────────────────────────┼─────────────────────────┤                                                                             
+  │ get_active_products()    │ 取得上架商品              │                                                                             
+  ├──────────────────────────┼─────────────────────────┤                                                                             
+  │ get_product_with_stock() │ 取得商品含庫存          │                                                                             
+  ├──────────────────────────┼─────────────────────────┤                                                                             
+  │ get_low_stock_products() │ 取得低庫存商品          │                                                                             
+  └──────────────────────────┴─────────────────────────┘                                                                             
+  搶購流程圖                                                                                                                         
+                                                                                                                                     
+  用戶下單                                                                                                                           
+      │                                                                                                                              
+      ▼                                                                                                                              
+  ┌─────────────────┐                                                                                                                
+  │ check_rate_limit │ → 超限 → RateLimitExceededException                                                                           
+  └────────┬────────┘                                                                                                                
+           │ 通過                                                                                                                    
+           ▼                                                                                                                         
+  ┌─────────────────┐                                                                                                                
+  │ Redis DECRBY    │ → 庫存<0 → InsufficientStockException                                                                          
+  └────────┬────────┘                                                                                                                
+           │ 成功                                                                                                                    
+           ▼                                                                                                                         
+  ┌─────────────────┐                                                                                                                
+  │ DB F() + version│ → 失敗 → Redis INCRBY 回滾                                                                                     
+  └────────┬────────┘                                                                                                                
+           │ 成功                                                                                                                    
+           ▼                                                                                                                         
+        完成扣減      
+
+
+Build 成功。前端專案已完成初始化。                                                                                                 
+                                                                                                                                     
+  ---                                                                                                                                
+  前端初始化完成摘要                                                                                                                 
+                                                                                                                                     
+  技術棧 (Ref: frontend_structure.md §1)                                                                                             
+  ┌────────────────┬──────┬──────────────┐                                                                                           
+  │      套件      │ 版本 │     用途     │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ React          │ 18+  │ UI 框架      │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ Vite           │ 7.x  │ 構建工具     │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ TypeScript     │ 5.x  │ 類型安全     │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ TanStack Query │ 5.x  │ API 數據緩存 │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ Zustand        │ 5.x  │ 狀態管理     │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ Tailwind CSS   │ 4.x  │ 樣式框架     │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ Axios          │ 1.x  │ HTTP 客戶端  │                                                                                           
+  ├────────────────┼──────┼──────────────┤                                                                                           
+  │ Zod            │ 3.x  │ 數據驗證     │                                                                                           
+  └────────────────┴──────┴──────────────┘                                                                                           
+  目錄結構                                                                                                                           
+                                                                                                                                     
+  frontend/                                                                                                                          
+  ├── src/                                                                                                                           
+  │   ├── api/              ← API 客戶端                                                                                             
+  │   │   ├── client.ts     # Axios 實例 + 攔截器                                                                                    
+  │   │   ├── orders.ts     # 訂單 API                                                                                               
+  │   │   ├── products.ts   # 商品 API                                                                                               
+  │   │   └── index.ts                                                                                                               
+  │   ├── components/ui/    ← UI 組件 (待實作)                                                                                       
+  │   ├── features/         ← 業務模組                                                                                               
+  │   │   ├── products/                                                                                                              
+  │   │   ├── cart/                                                                                                                  
+  │   │   ├── checkout/                                                                                                              
+  │   │   └── auth/                                                                                                                  
+  │   ├── hooks/            ← 自定義 Hooks (待實作)                                                                                  
+  │   ├── store/            ← Zustand Stores (待實作)                                                                                
+  │   ├── types/            ← TypeScript 類型 ✅                                                                                     
+  │   ├── utils/            ← 工具函數 (待實作)                                                                                      
+  │   ├── App.tsx           ← 主組件                                                                                                 
+  │   ├── main.tsx          ← 入口 + QueryClient                                                                                     
+  │   └── index.css         ← Tailwind 主題                                                                                          
+  ├── vite.config.ts        ← 路徑別名 + 代理                                                                                        
+  └── package.json                                                                                                                   
+                                                                                                                                     
+  配置亮點                                                                                                                           
+                                                                                                                                     
+  - 路徑別名: @/ → ./src/                                                                                                            
+  - API 代理: /api → http://localhost:8000                                                                                           
+  - QueryClient: staleTime: 2000ms, refetchOnWindowFocus: true                                                                       
+  - Tailwind 主題: 自定義色彩變數 (primary, secondary, muted...)                                                                     
+                                                                                                                                     
+  啟動指令                                                                                                                           
+                                                                                                                                     
+  cd frontend                                                                                                                        
+  npm run dev    # 開發伺服器 (port 3000)                                                                                            
+  npm run build  # 生產構建                                                                                                          
+                                                                                                               
+                                                                                                                                     
+
+Concurrency Control Summary                                                                                                        
+                                                                                                                                     
+  Multi-Layer Protection (Already Existed + Enhanced)                                                                                
+                                                                                                                                     
+  ┌─────────────────────────────────────────────────────────────┐                                                                    
+  │  Layer 1: Redis DECRBY                                      │                                                                    
+  │  ├─ Atomic decrement                                        │                                                                    
+  │  ├─ Fast rejection (< 1ms)                                  │                                                                    
+  │  └─ Auto-rollback on failure (INCRBY)                       │                                                                    
+  ├─────────────────────────────────────────────────────────────┤                                                                    
+  │  Layer 2: Pessimistic Lock (select_for_update)              │                                                                    
+  │  ├─ Row-level lock on Stock table                           │                                                                    
+  │  └─ Prevents concurrent writes                              │                                                                    
+  ├─────────────────────────────────────────────────────────────┤                                                                    
+  │  Layer 3: Optimistic Lock (F() + version)                   │                                                                    
+  │  ├─ Version number check                                    │                                                                    
+  │  └─ Final consistency guarantee                             │                                                                    
+  ├─────────────────────────────────────────────────────────────┤                                                                    
+  │  Layer 4: Retry Mechanism (NEW)                             │                                                                    
+  │  ├─ Max 3 retries on version conflict                       │                                                                    
+  │  └─ Exponential backoff (10ms, 20ms, 40ms)                  │                                                                    
+  ├─────────────────────────────────────────────────────────────┤                                                                    
+  │  Layer 5: Deadlock Prevention (NEW)                         │                                                                    
+  │  ├─ Items sorted by product_id before locking               │                                                                    
+  │  └─ Consistent lock ordering                                │                                                                    
+  └─────────────────────────────────────────────────────────────┘                                                                    
+                                                                                                                                     
+  Key Changes                                                                                                                        
+  ┌──────────────────────────────┬────────────────────────────────────────────────┐                                                  
+  │             File             │                     Change                     │                                                  
+  ├──────────────────────────────┼────────────────────────────────────────────────┤                                                  
+  │ orders/services.py:88        │ Sort items by product_id to prevent deadlock   │                                                  
+  ├──────────────────────────────┼────────────────────────────────────────────────┤                                                  
+  │ orders/services.py:100       │ Removed redundant select_for_update on Product │                                                  
+  ├──────────────────────────────┼────────────────────────────────────────────────┤                                                  
+  │ products/services.py:52      │ Added retry constants                          │                                                  
+  ├──────────────────────────────┼────────────────────────────────────────────────┤                                                  
+  │ products/services.py:76-128  │ Added retry loop with exponential backoff      │                                                  
+  ├──────────────────────────────┼────────────────────────────────────────────────┤                                                  
+  │ products/services.py:145-192 │ Extracted _decrease_stock_db() for clarity     │                                                  
+  └──────────────────────────────┴────────────────────────────────────────────────┘                                                  
+  The system now handles both pessimistic locking (for immediate conflict prevention) and optimistic locking with retry (for         
+  high-concurrency scenarios).                            
+
+   Observability Stack Summary                                                                                                        
+                                                                                                                                     
+  Services Added to docker-compose.yml                                                                                               
+  ┌────────────┬──────┬─────────────────────────────────────┐                                                                        
+  │  Service   │ Port │               Purpose               │                                                                        
+  ├────────────┼──────┼─────────────────────────────────────┤                                                                        
+  │ prometheus │ 9090 │ Metrics collection & alerting rules │                                                                        
+  ├────────────┼──────┼─────────────────────────────────────┤                                                                        
+  │ grafana    │ 3001 │ Visualization dashboards            │                                                                        
+  └────────────┴──────┴─────────────────────────────────────┘                                                                        
+  Files Created                                                                                                                      
+                                                                                                                                     
+  observability/                                                                                                                     
+  ├── prometheus/                                                                                                                    
+  │   ├── prometheus.yml          # Scrape config for Django                                                                         
+  │   └── alert_rules.yml         # 5 alert rule groups                                                                              
+  └── grafana/                                                                                                                       
+      └── provisioning/                                                                                                              
+          ├── datasources/                                                                                                           
+          │   └── datasources.yml # Prometheus datasource                                                                            
+          └── dashboards/                                                                                                            
+              ├── dashboards.yml  # Dashboard provider config                                                                        
+              └── api_monitoring.json # API dashboard with 14 panels                                                                 
+                                                                                                                                     
+  Django Configuration                                                                                                               
+                                                                                                                                     
+  requirements/base.txt - Added django-prometheus>=2.3,<3.0                                                                          
+                                                                                                                                     
+  core/settings/base.py:                                                                                                             
+  - Added django_prometheus to INSTALLED_APPS                                                                                        
+  - Added PrometheusBeforeMiddleware (first)                                                                                         
+  - Added PrometheusAfterMiddleware (last)                                                                                           
+  - Added ErrorRateAlertMiddleware (custom)                                                                                          
+                                                                                                                                     
+  core/urls.py - Added /metrics endpoint                                                                                             
+                                                                                                                                     
+  Alert Rules (in Prometheus)                                                                                                        
+  ┌────────────────────────┬────────────────────────────┬──────────┐                                                                 
+  │         Alert          │         Condition          │ Severity │                                                                 
+  ├────────────────────────┼────────────────────────────┼──────────┤                                                                 
+  │ OrdersAPIHighErrorRate │ Orders API > 5% error rate │ critical │                                                                 
+  ├────────────────────────┼────────────────────────────┼──────────┤                                                                 
+  │ APIHighErrorRate       │ All APIs > 10% error rate  │ warning  │                                                                 
+  ├────────────────────────┼────────────────────────────┼──────────┤                                                                 
+  │ OrdersAPIHighLatency   │ Orders P95 > 500ms         │ warning  │                                                                 
+  ├────────────────────────┼────────────────────────────┼──────────┤                                                                 
+  │ APIVeryHighLatency     │ All APIs P99 > 2s          │ critical │                                                                 
+  ├────────────────────────┼────────────────────────────┼──────────┤                                                                 
+  │ HighStockConflictRate  │ > 20% 409 conflicts        │ warning  │                                                                 
+  └────────────────────────┴────────────────────────────┴──────────┘                                                                 
+  ErrorRateAlertMiddleware                                                                                                           
+                                                                                                                                     
+  Logs WARNING when /api/orders/ error rate exceeds 5%:                                                                              
+  {"level":"WARNING","message":"ERROR_RATE_EXCEEDED: /api/orders error rate is 8.0% (threshold:                                      
+  5%)","extra":{"alert_type":"ERROR_RATE_EXCEEDED","endpoint":"/api/orders","error_rate":0.08,"threshold":0.05}}                     
+                                                                                                                                     
+  Access URLs                                                                                                                        
+                                                                                                                                     
+  - Prometheus: http://localhost:9090                                                                                                
+  - Grafana: http://localhost:3002 (123456789)                                                                                     
