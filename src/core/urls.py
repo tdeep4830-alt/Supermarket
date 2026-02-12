@@ -22,6 +22,8 @@ urlpatterns = [
     path("api/orders/", include("apps.orders.urls")),
     path("api/auth/", include("apps.users.urls")),  # Auth endpoints (Ref: auth.md §5)
     path("api/delivery/", include("apps.delivery.urls")),
+    # Admin API Endpoints (Ref: .blueprint/auth.md §4 - IsAdminUser)
+    path("api/admin/", include("apps.admin.urls")),
 ]
 
 # Debug Toolbar URLs (only in development)

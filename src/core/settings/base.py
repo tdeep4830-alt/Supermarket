@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.orders",
     "apps.users",
     "apps.delivery",
+    "apps.admin",  # Admin Portal API
 ]
 
 MIDDLEWARE = [
