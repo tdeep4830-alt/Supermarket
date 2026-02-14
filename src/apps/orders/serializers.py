@@ -53,6 +53,10 @@ class PlaceOrderSerializer(serializers.Serializer):
         max_length=50,
         help_text="Optional coupon code to apply",
     )
+    delivery_slot_id = serializers.UUIDField(
+        required=True,
+        help_text="Delivery slot UUID",
+    )
 
     def validate_items(self, value: list[dict]) -> list[dict]:
         """Validate items list is not empty."""

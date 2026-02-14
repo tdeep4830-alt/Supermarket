@@ -89,6 +89,7 @@ def place_order(
     user: "AbstractUser",
     items: list[OrderItemInput],
     coupon_code: str | None = None,
+    delivery_slot_id: UUID | None = None,
 ) -> PlaceOrderResult:
     """
     下單服務（整合搶購 + 優惠碼）.
@@ -116,6 +117,7 @@ def place_order(
         user: 下單用戶
         items: 訂單項目列表
         coupon_code: 優惠碼（可選）
+        delivery_slot_id: 配送時段 UUID（可選）
 
     Returns:
         PlaceOrderResult: 訂單結果
@@ -139,7 +141,40 @@ def place_order(
     if coupon_code:
         coupon = validate_coupon(coupon_code, user)
 
-    # Step 3: 事務處理 (Ref: data.md §5)
+    # Step 3: 配送時段預訂（在事務外，如失敗則不進入事務）
+    delivery_slot = None
+    if delivery_slot_id:
+        from apps.delivery import services as delivery_services
+        from apps.delivery.models import DeliverySlot
+
+        try:
+            delivery_slot = DeliverySlot.objects.get(id=delivery_slot_id)
+            # Reserve the slot
+            delivery_services.reserve_slot(
+                slot_id=delivery_slot_id,
+                order_id="",  # Will be updated after order creation
+                admin_user=user
+            )
+        except delivery_services.DeliverySlotNotFoundError:
+            logger.warning(
+                "Delivery slot not found",
+                extra={"extra_data": {"delivery_slot_id": str(delivery_slot_id)}},
+            )
+            raise
+        except delivery_services.DeliverySlotFullError:
+            logger.warning(
+                "Delivery slot is full",
+                extra={"extra_data": {"delivery_slot_id": str(delivery_slot_id)}},
+            )
+            raise
+        except delivery_services.DeliverySlotExpiredError:
+            logger.warning(
+                "Delivery slot has expired",
+                extra={"extra_data": {"delivery_slot_id": str(delivery_slot_id)}},
+            )
+            raise
+
+    # Step 4: 事務處理 (Ref: data.md §5)
     with transaction.atomic():
         # 3.1 獲取商品資訊並扣減庫存
         # IMPORTANT: 按 product_id 排序，確保一致的鎖獲取順序，避免死鎖
@@ -180,13 +215,27 @@ def place_order(
         total_amount = max(subtotal - discount_amount, Decimal("0.00"))
 
         # 3.4 創建訂單
-        order = Order.objects.create(
-            user=user,
-            status=Order.Status.PENDING,
-            total_amount=total_amount,
-            applied_coupon=coupon,
-            discount_amount=discount_amount,
-        )
+        order_data = {
+            "user": user,
+            "status": Order.Status.PENDING,
+            "total_amount": total_amount,
+            "applied_coupon": coupon,
+            "discount_amount": discount_amount,
+        }
+
+        # Add delivery slot if reserved
+        if delivery_slot:
+            order_data["delivery_slot"] = delivery_slot
+
+        order = Order.objects.create(**order_data)
+
+        # Update delivery slot with order ID if reserved
+        if delivery_slot_id:
+            delivery_services.reserve_slot(
+                slot_id=delivery_slot_id,
+                order_id=order.id,
+                admin_user=user
+            )
 
         # 3.5 創建訂單項目
         created_items = []

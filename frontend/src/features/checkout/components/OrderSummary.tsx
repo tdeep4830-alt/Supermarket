@@ -5,7 +5,7 @@
  */
 
 import { memo } from 'react';
-import type { CartItem, CouponMinimal } from '@/types';
+import type { CartItem, CouponMinimal, DeliverySlot } from '@/types';
 import { calculateDiscount } from '@/types';
 import { formatPrice } from '@/utils';
 
@@ -13,12 +13,14 @@ interface OrderSummaryProps {
   items: CartItem[];
   subtotal: number;
   appliedCoupon: CouponMinimal | null;
+  deliverySlot?: DeliverySlot | null;
 }
 
 function OrderSummaryComponent({
   items,
   subtotal,
   appliedCoupon,
+  deliverySlot,
 }: OrderSummaryProps) {
   const discount = appliedCoupon ? calculateDiscount(appliedCoupon, subtotal) : 0;
   const total = subtotal - discount;
@@ -90,6 +92,18 @@ function OrderSummaryComponent({
             </span>
             <span className="text-green-600">-{formatPrice(discount)}</span>
           </div>
+        )}
+
+        {/* Delivery Slot */}
+        {deliverySlot && (
+          <>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">配送時段</span>
+              <span className="text-card-foreground">
+                {deliverySlot.date} {deliverySlot.start_time}
+              </span>
+            </div>
+          </>
         )}
 
         {/* Divider */}

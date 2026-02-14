@@ -5,20 +5,45 @@
  */
 
 import { useState } from 'react';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { AdminLayout } from '../components/AdminLayout';
-import { InventoryTable } from '../components/InventoryTable';
+import { InventoryTable as InventoryTableComponent } from '../components/InventoryTable';
+import { ProductFormModal } from '../components/ProductFormModal';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
 
 export function InventoryPage(): JSX.Element {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [showProductFormModal, setShowProductFormModal] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
   };
 
+  const handleAddProduct = () => {
+    setShowProductFormModal(true);
+  };
+
+  // Fetch categories for the form
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await apiClient.get('/admin/categories/');
+      // Debug log
+      console.log('Categories response:', response.data);
+      // Ensure we return an array
+      if (Array.isArray(response.data?.categories)) {
+        return response.data.categories;
+      }
+      // Fallback to empty array
+      return [];
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
   return (
-    <AdminLayout>
+    <AdminLayout currentPage="inventory">
       <div className="space-y-6">
         {/* Header */}
         <div className="md:flex md:items-center md:justify-between">
@@ -29,6 +54,16 @@ export function InventoryPage(): JSX.Element {
             <p className="mt-2 text-sm text-gray-700">
               Monitor and manage your product inventory with real-time stock updates.
             </p>
+          </div>
+          <div className="mt-4 md:mt-0">
+            <button
+              type="button"
+              onClick={handleAddProduct}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              <PlusIcon className="-ml-1 mr-2 h-4 w-4" />
+              Add Product
+            </button>
           </div>
         </div>
 
@@ -100,9 +135,27 @@ export function InventoryPage(): JSX.Element {
           </div>
         </div>
 
+        {/* Debug: Show categories count */}
+        {categories.length > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <p className="text-sm text-green-700">✓ 已載入 {categories.length} 個類別</p>
+          </div>
+        )}
+
         {/* Inventory Table */}
-        <InventoryTable searchTerm={searchTerm} statusFilter={statusFilter} />
+        <InventoryTableComponent searchTerm={searchTerm} statusFilter={statusFilter} />
       </div>
+
+      {/* Add Product Modal */}
+      {showProductFormModal && (
+        <ProductFormModal
+          isOpen={showProductFormModal}
+          onClose={() => setShowProductFormModal(false)}
+          mode="create"
+          categoryOptions={categories}
+          initialData={{}}
+        />
+      )}
     </AdminLayout>
   );
 }

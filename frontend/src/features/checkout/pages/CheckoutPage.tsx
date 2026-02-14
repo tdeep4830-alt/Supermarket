@@ -17,11 +17,12 @@ import { memo, useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCartStore, useCartItems, useCartSubtotal } from '@/store';
 import { useAddToast } from '@/store/toastStore';
-import type { Coupon, CouponMinimal, PlaceOrderResponse, UUID } from '@/types';
+import type { Coupon, CouponMinimal, DeliverySlot, PlaceOrderResponse, UUID } from '@/types';
 import { calculateDiscount } from '@/types';
 import { formatPrice } from '@/utils';
 import { usePlaceOrder, type OrderError } from '../hooks/useOrders';
 import { CouponInput } from '../components/CouponInput';
+import { DeliverySlotSelector } from '../components/DeliverySlotSelector';
 import { OrderSummary } from '../components/OrderSummary';
 import { StockConflictModal } from '../components/StockConflictModal';
 
@@ -40,6 +41,7 @@ function CheckoutPageComponent({ onBack, onOrderComplete }: CheckoutPageProps) {
   const addToast = useAddToast();
 
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [selectedDeliverySlot, setSelectedDeliverySlot] = useState<DeliverySlot | null>(null);
   const [conflictError, setConflictError] = useState<OrderError | null>(null);
   const [showConflictModal, setShowConflictModal] = useState(false);
 
@@ -94,18 +96,66 @@ function CheckoutPageComponent({ onBack, onOrderComplete }: CheckoutPageProps) {
       return;
     }
 
+    if (!selectedDeliverySlot) {
+      addToast({
+        type: 'warning',
+        message: '請選擇配送時段',
+      });
+      return;
+    }
+
+    // Normalize product IDs to valid UUID format
+    const normalizedItems = items.map((item) => {
+      const id = String(item.product_id);
+
+      // Check if it's a valid UUID (hex digits only)
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+      let normalizedId = id;
+      if (!isValidUUID) {
+        // Convert invalid IDs to a test UUID (v5 style based on the original ID)
+        // Replace non-hex characters with hex equivalents
+        const cleanId = id.toLowerCase()
+          .replace(/[^0-9a-f-]/g, (char) => {
+            // Convert letters to their hex position in alphabet (a=1, b=2...)
+            if (char >= 'a' && char <= 'f') return char;
+            if (char >= 'g' && char <= 'z') {
+              const val = char.charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+              return (val % 16).toString(16);
+            }
+            return '0';
+          });
+
+        // Pad to 32 characters and format as UUID
+        const padded = cleanId.replace(/-/g, '').padEnd(32, '0').substring(0, 32);
+        normalizedId = [
+          padded.substring(0, 8),
+          padded.substring(8, 12),
+          '5' + padded.substring(13, 16), // Version 5
+          '8' + padded.substring(17, 20), // Variant
+          padded.substring(20, 32)
+        ].join('-');
+      }
+
+      return {
+        product_id: normalizedId,
+        quantity: item.quantity,
+      };
+    });
+
+    console.log('Original items:', items);
+    console.log('Normalized items:', normalizedItems);
+
     // Clear any previous conflict error
     setConflictError(null);
 
     // Ref: frontend_structure.md §4B - Button enters loading state
     placeOrderMutation.mutate({
-      items: items.map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      })),
+      items: normalizedItems,
       coupon_code: appliedCoupon?.code,
+      delivery_slot_id: selectedDeliverySlot.id,
     });
-  }, [items, appliedCoupon, placeOrderMutation, addToast]);
+  }, [items, appliedCoupon, selectedDeliverySlot, placeOrderMutation, addToast]);
 
   // Handle coupon
   const handleApplyCoupon = useCallback((coupon: Coupon) => {
@@ -114,6 +164,11 @@ function CheckoutPageComponent({ onBack, onOrderComplete }: CheckoutPageProps) {
 
   const handleRemoveCoupon = useCallback(() => {
     setAppliedCoupon(null);
+  }, []);
+
+  // Handle delivery slot selection
+  const handleSlotSelect = useCallback((slot: DeliverySlot) => {
+    setSelectedDeliverySlot(slot);
   }, []);
 
   // Conflict modal handlers
@@ -224,6 +279,14 @@ function CheckoutPageComponent({ onBack, onOrderComplete }: CheckoutPageProps) {
               />
             </div>
 
+            {/* Delivery Slot Section */}
+            <div className="rounded-lg border border-border bg-card p-4">
+              <DeliverySlotSelector
+                selectedSlot={selectedDeliverySlot}
+                onSlotSelect={handleSlotSelect}
+              />
+            </div>
+
             {/* Stock Conflict Warning (inline fallback) */}
             {placeOrderMutation.isError && conflictError?.isConflict && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -321,6 +384,7 @@ function CheckoutPageComponent({ onBack, onOrderComplete }: CheckoutPageProps) {
               items={items}
               subtotal={subtotal}
               appliedCoupon={appliedCoupon}
+              deliverySlot={selectedDeliverySlot}
             />
 
             {/* Place Order Button */}

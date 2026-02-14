@@ -3,34 +3,57 @@
  *
  * Provides dashboard layout with sidebar navigation for admin features.
  * Includes: Inventory Management, Order Management
+ *
+ * Note: This app uses state management instead of React Router
  */
 
 import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: '📊' },
-  { name: 'Inventory Management', href: '/admin/inventory', icon: '📦' },
-  { name: 'Order Management', href: '/admin/orders', icon: '📋' },
-];
-
 interface AdminLayoutProps {
-  children?: React.ReactNode;
+  children: React.ReactNode;
+  currentPage?: 'dashboard' | 'inventory' | 'delivery-slots' | 'orders';
+  onNavigate?: (page: string) => void;
 }
 
-export function AdminLayout({ children }: AdminLayoutProps): JSX.Element {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
+const navigation = [
+  { name: 'Dashboard', page: 'dashboard', icon: '📊' },
+  { name: 'Inventory Management', page: 'inventory', icon: '📦' },
+  { name: 'Delivery Slots', page: 'delivery-slots', icon: '🚚' },
+  { name: 'Order Management', page: 'orders', icon: '📋' },
+];
 
-  const isActive = (href: string) => {
-    if (href === '/admin' && location.pathname === '/admin') {
-      return true;
+export function AdminLayout({ children, currentPage = 'inventory', onNavigate }: AdminLayoutProps): JSX.Element {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleNavigation = (page: string) => {
+    setSidebarOpen(false);
+    if (onNavigate) {
+      onNavigate(page);
     }
-    if (href !== '/admin' && location.pathname.startsWith(href)) {
-      return true;
+    // Default behavior: if inventory page, stay on inventory
+    if (page === 'inventory' && !onNavigate) {
+      // Already on inventory page
     }
-    return false;
+  };
+
+  const getPageTitle = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return 'Dashboard';
+      case 'inventory':
+        return 'Inventory Management';
+      case 'delivery-slots':
+        return 'Delivery Slots';
+      case 'orders':
+        return 'Order Management';
+      default:
+        return 'Admin Portal';
+    }
+  };
+
+  const isActive = (page: string) => {
+    return page === currentPage;
   };
 
   return (
@@ -50,24 +73,27 @@ export function AdminLayout({ children }: AdminLayoutProps): JSX.Element {
             {/* Sidebar component */}
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between h-16 flex-shrink-0 px-4 border-b border-gray-200">
-                <Link to="/admin" className="flex items-center">
+                <button
+                  onClick={() => handleNavigation('dashboard')}
+                  className="flex items-center"
+                >
                   <h1 className="text-xl font-semibold text-gray-900">Admin Portal</h1>
-                </Link>
+                </button>
               </div>
               <nav className="flex-1 px-2 py-4 bg-white">
                 {navigation.map((item) => (
-                  <Link
+                  <button
                     key={item.name}
-                    to={item.href}
-                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                      isActive(item.href)
+                    onClick={() => handleNavigation(item.page)}
+                    className={`group flex items-center w-full text-left px-2 py-2 text-sm font-medium rounded-md ${
+                      isActive(item.page)
                         ? 'bg-blue-50 text-blue-700 border-blue-200 border-l-4 pl-5'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 mx-1'
                     }`}
                   >
                     <span className="mr-3 text-lg">{item.icon}</span>
                     {item.name}
-                  </Link>
+                  </button>
                 ))}
               </nav>
             </div>
@@ -77,9 +103,12 @@ export function AdminLayout({ children }: AdminLayoutProps): JSX.Element {
         {/* Mobile sidebar */}
         <div className={`lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white ${sidebarOpen ? 'block' : 'hidden'}`}>
           <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-            <Link to="/admin" className="flex items-center">
+            <button
+              onClick={() => handleNavigation('dashboard')}
+              className="flex items-center"
+            >
               <h1 className="text-xl font-semibold text-gray-900">Admin Portal</h1>
-            </Link>
+            </button>
             <button
               onClick={() => setSidebarOpen(false)}
               className="text-gray-500 hover:text-gray-700"
@@ -89,19 +118,18 @@ export function AdminLayout({ children }: AdminLayoutProps): JSX.Element {
           </div>
           <nav className="flex-1 px-2 py-4 bg-white">
             {navigation.map((item) => (
-              <Link
+              <button
                 key={item.name}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                  isActive(item.href)
+                onClick={() => handleNavigation(item.page)}
+                className={`group flex items-center w-full text-left px-2 py-2 text-sm font-medium rounded-md ${
+                  isActive(item.page)
                     ? 'bg-blue-50 text-blue-700 border-blue-200 border-l-4 pl-5'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 mx-1'
                 }`}
               >
                 <span className="mr-3 text-lg">{item.icon}</span>
                 {item.name}
-              </Link>
+              </button>
             ))}
           </nav>
         </div>
@@ -121,9 +149,7 @@ export function AdminLayout({ children }: AdminLayoutProps): JSX.Element {
                   </button>
                   <div className="hidden lg:block">
                     <h2 className="text-lg font-semibold text-gray-900">
-                      {location.pathname === '/admin' && 'Dashboard'}
-                      {location.pathname === '/admin/inventory' && 'Inventory Management'}
-                      {location.pathname === '/admin/orders' && 'Order Management'}
+                      {getPageTitle()}
                     </h2>
                   </div>
                 </div>
@@ -142,7 +168,7 @@ export function AdminLayout({ children }: AdminLayoutProps): JSX.Element {
           {/* Page content */}
           <main className="flex-1 overflow-y-auto bg-gray-50">
             <div className="px-4 sm:px-6 lg:px-8 py-8">
-              {children || <Outlet />}
+              {children}
             </div>
           </main>
         </div>

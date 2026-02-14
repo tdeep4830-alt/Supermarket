@@ -11,6 +11,10 @@ import { useState } from 'react';
 import { useAdminInventory } from '../hooks/useAdminInventory';
 import { useStockFlash, /* getStockBadgeColor, */ getProgressBarColor } from '../../products/hooks/useStockFlash';
 import { RestockModal } from './RestockModal';
+import { ProductFormModal } from './ProductFormModal';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
+import { useAddToast } from '../../../store/toastStore';
 import type { InventoryItem } from '../types';
 import { formatPrice } from '../../../utils/format';
 
@@ -23,6 +27,11 @@ export function InventoryTable({ searchTerm, statusFilter }: InventoryTableProps
   const { data: inventory, isLoading, isError, refetch } = useAdminInventory(searchTerm, statusFilter);
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showProductFormModal, setShowProductFormModal] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [initialFormData, setInitialFormData] = useState<Partial<any>>({});
+  const [productFormProductId, setProductFormProductId] = useState<string>("");
+  const addToast = useAddToast();
 
   const handleRestock = (product: InventoryItem) => {
     setSelectedProduct(product);
@@ -35,6 +44,49 @@ export function InventoryTable({ searchTerm, statusFilter }: InventoryTableProps
     setSelectedProduct(null);
     setShowRestockModal(false);
   };
+
+  const handleEdit = (product: InventoryItem) => {
+    setFormMode('edit');
+    setInitialFormData({
+      name: product.name,
+      price: Number(product.price),
+      categoryId: product.category.id,
+      description: '',
+      imageUrl: '',
+    });
+    setProductFormProductId(product.id);
+    setSelectedProduct(product);
+    setShowProductFormModal(true);
+  };
+
+  const handleDelete = async (product: InventoryItem) => {
+    if (!window.confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await apiClient.delete(`/admin/products/${product.id}/`);
+      if (response.data.success) {
+        addToast({ type: 'success', message: `Product "${product.name}" deleted successfully` });
+        refetch();
+      } else {
+        addToast({ type: 'error', message: 'Failed to delete product' });
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error?.message || 'Failed to delete product';
+      addToast({ type: 'error', message: errorMessage });
+      console.error('Product deletion failed:', error);
+    }
+  };
+
+  // Fetch categories for the form
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await apiClient.get('/products/categories/');
+      return response.data;
+    },
+  });
 
   if (isLoading) {
     return (
@@ -98,6 +150,8 @@ export function InventoryTable({ searchTerm, statusFilter }: InventoryTableProps
                   key={item.id}
                   item={item}
                   onRestock={() => handleRestock(item)}
+                  onEdit={() => handleEdit(item)}
+                  onDelete={() => handleDelete(item)}
                 />
               ))}
             </tbody>
@@ -115,6 +169,21 @@ export function InventoryTable({ searchTerm, statusFilter }: InventoryTableProps
           onSuccess={handleRestockSuccess}
         />
       )}
+
+      {showProductFormModal && (
+        <ProductFormModal
+          isOpen={showProductFormModal}
+          onClose={() => {
+            setShowProductFormModal(false);
+            setSelectedProduct(null);
+            setInitialFormData({});
+          }}
+          mode={formMode}
+          productId={productFormProductId}
+          initialData={initialFormData}
+          categoryOptions={categories}
+        />
+      )}
     </>
   );
 }
@@ -122,9 +191,11 @@ export function InventoryTable({ searchTerm, statusFilter }: InventoryTableProps
 interface InventoryRowProps {
   item: InventoryItem;
   onRestock: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
-function InventoryRow({ item, onRestock }: InventoryRowProps): JSX.Element {
+function InventoryRow({ item, onRestock, onEdit, onDelete }: InventoryRowProps): JSX.Element {
   // Use useStockFlash hook to get real-time stock animation
   const stockFlash = useStockFlash(item.stock, {
     maxStock: 100,
@@ -189,12 +260,27 @@ function InventoryRow({ item, onRestock }: InventoryRowProps): JSX.Element {
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right">
-        <button
-          onClick={onRestock}
-          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Restock
-        </button>
+        <div className="flex justify-end space-x-2">
+          <button
+            onClick={onEdit}
+            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            title="Edit Product"
+          >
+            Edit
+          </button>
+          <button
+            onClick={onRestock}
+            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Restock
+          </button>
+          <button
+            onClick={onDelete}
+            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            Delete
+          </button>
+        </div>
       </td>
     </tr>
   );

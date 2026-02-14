@@ -6,17 +6,18 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { User, LogOut, LogIn, UserPlus, ShoppingBag, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, LogIn, UserPlus, ShoppingBag, LayoutDashboard, Truck } from 'lucide-react';
 import { ProductsPage } from '@/features/products';
 import { CartButton, CartDrawer } from '@/features/cart';
 import { CheckoutPage, OrderSuccessPage } from '@/features/checkout';
 import { LoginPage, RegisterPage, ProtectedRoute } from '@/features/auth';
 import { AdminRoute, InventoryPage } from '@/features/admin';
+import { DeliverySlotsPage } from '@/features/admin/pages/DeliverySlotsPage';
 import { ToastContainer } from '@/components/Toast';
 import { useAuthStore, useUser, useIsAuthenticated, useAddToast } from '@/store';
 import type { PlaceOrderResponse } from '@/types';
 
-type AppView = 'products' | 'checkout' | 'order-success' | 'login' | 'register' | 'admin-inventory';
+type AppView = 'products' | 'checkout' | 'order-success' | 'login' | 'register' | 'admin-inventory' | 'admin-delivery-slots';
 
 function App() {
   const [currentView, setCurrentView] = useState<AppView>('products');
@@ -114,6 +115,10 @@ function App() {
     setCurrentView('admin-inventory');
   }, []);
 
+  const handleDeliverySlotsClick = useCallback(() => {
+    setCurrentView('admin-delivery-slots');
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -140,13 +145,26 @@ function App() {
                   </div>
                   {/* Admin Button (for staff users) */}
                   {user?.is_staff && (
-                    <button
-                      onClick={handleAdminClick}
-                      className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      <span className="hidden sm:inline">Admin</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleAdminClick}
+                        className={`flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground ${
+                          currentView === 'admin-inventory' ? 'bg-accent text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span className="hidden sm:inline">庫存</span>
+                      </button>
+                      <button
+                        onClick={handleDeliverySlotsClick}
+                        className={`flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground ${
+                          currentView === 'admin-delivery-slots' ? 'bg-accent text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        <Truck className="h-4 w-4" />
+                        <span className="hidden sm:inline">配送</span>
+                      </button>
+                    </div>
                   )}
                   {/* Logout Button */}
                   <button
@@ -229,6 +247,12 @@ function App() {
         {currentView === 'admin-inventory' && (
           <AdminRoute>
             <InventoryPage />
+          </AdminRoute>
+        )}
+
+        {currentView === 'admin-delivery-slots' && (
+          <AdminRoute>
+            <DeliverySlotsPage />
           </AdminRoute>
         )}
       </main>

@@ -104,3 +104,73 @@ class AdminDashboardStatsSerializer(serializers.Serializer):
     total_orders = serializers.IntegerField()
     pending_orders = serializers.IntegerField()
     total_revenue = serializers.DecimalField(max_digits=15, decimal_places=2)
+
+
+# =============================================================================
+# Product CRUD Serializers
+# =============================================================================
+
+
+class ProductCreateRequestSerializer(serializers.Serializer):
+    """Serializer for creating a new product with inventory."""
+
+    name = serializers.CharField(max_length=200, help_text="Product name")
+    price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=Decimal("0.01"), help_text="Product price"
+    )
+    category_id = serializers.UUIDField(help_text="Category UUID")
+    description = serializers.CharField(
+        max_length=500, required=False, allow_blank=True, help_text="Product description"
+    )
+    image_url = serializers.URLField(
+        required=False, allow_blank=True, max_length=500, help_text="Product image URL"
+    )
+    initial_stock = serializers.IntegerField(
+        min_value=0, default=0, help_text="Initial stock quantity"
+    )
+
+    def validate_initial_stock(self, value):
+        """Validate initial stock is non-negative."""
+        if value < 0:
+            raise serializers.ValidationError("Initial stock must be >= 0")
+        return value
+
+
+class ProductCreateResponseSerializer(serializers.Serializer):
+    """Serializer for product creation response."""
+
+    success = serializers.BooleanField()
+    data = serializers.DictField()
+
+
+class ProductUpdateRequestSerializer(serializers.Serializer):
+    """Serializer for updating product information."""
+
+    name = serializers.CharField(max_length=200, required=False, help_text="Product name")
+    price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        required=False,
+        help_text="Product price",
+    )
+    description = serializers.CharField(
+        max_length=500, required=False, allow_blank=True, help_text="Product description"
+    )
+    image_url = serializers.URLField(
+        required=False, allow_blank=True, max_length=500, help_text="Product image URL"
+    )
+    category_id = serializers.UUIDField(required=False, help_text="Category UUID")
+
+    def validate(self, data):
+        """Ensure at least one field to update."""
+        if not any(field in data for field in ["name", "price", "description", "image_url", "category_id"]):
+            raise serializers.ValidationError("At least one field must be provided to update")
+        return data
+
+
+class ProductDeleteResponseSerializer(serializers.Serializer):
+    """Serializer for product deletion response."""
+
+    success = serializers.BooleanField()
+    message = serializers.CharField()

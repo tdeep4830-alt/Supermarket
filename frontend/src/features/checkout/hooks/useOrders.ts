@@ -43,6 +43,8 @@ export const couponKeys = {
 // =============================================================================
 
 async function placeOrder(data: PlaceOrderRequest): Promise<PlaceOrderResponse> {
+  // Debug log to see what's being sent
+  console.log('PlaceOrder request data:', JSON.stringify(data, null, 2));
   const response = await apiClient.post<PlaceOrderResponse>('/orders/', data);
   return response.data;
 }

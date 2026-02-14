@@ -59,6 +59,7 @@ class OrderListCreateView(APIView):
         Request body:
             items: List of {product_id, quantity}
             coupon_code: Optional coupon code
+            delivery_slot_id: Delivery slot UUID (required)
         """
         serializer = PlaceOrderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -72,12 +73,14 @@ class OrderListCreateView(APIView):
             for item in serializer.validated_data["items"]
         ]
         coupon_code = serializer.validated_data.get("coupon_code")
+        delivery_slot_id = serializer.validated_data["delivery_slot_id"]
 
         # Call service (Ref: data.md §5 - all logic in services.py)
         result = place_order(
             user=request.user,
             items=items,
             coupon_code=coupon_code,
+            delivery_slot_id=delivery_slot_id,
         )
 
         logger.info(

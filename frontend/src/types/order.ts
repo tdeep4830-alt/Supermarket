@@ -86,6 +86,7 @@ export interface OrderDetail {
 export interface PlaceOrderRequest {
   items: OrderItemInput[];
   coupon_code?: string;
+  delivery_slot_id?: UUID;
 }
 
 export interface PlaceOrderResponse {

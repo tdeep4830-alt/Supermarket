@@ -88,3 +88,14 @@ export type {
   RegisterResponse,
   User,
 } from './user';
+
+// Delivery Slot types
+export type {
+  AvailableSlotsResponse,
+  BatchCreateSlotsRequest,
+  BatchCreateSlotsResponse,
+  DeliverySlot,
+  DeliverySlotDetailResponse,
+  EmergencyBlockRequest,
+  EmergencyBlockResponse,
+} from './delivery';
