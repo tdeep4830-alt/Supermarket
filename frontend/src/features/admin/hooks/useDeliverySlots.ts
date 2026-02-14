@@ -13,10 +13,6 @@ interface BatchCreateSlotsPayload {
   capacity: number;
 }
 
-interface EmergencyBlockPayload {
-  reason?: string;
-}
-
 interface BatchCreateResponse {
   success: boolean;
   message: string;

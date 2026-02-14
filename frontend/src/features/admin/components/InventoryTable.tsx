@@ -29,7 +29,7 @@ export function InventoryTable({ searchTerm, statusFilter }: InventoryTableProps
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [showProductFormModal, setShowProductFormModal] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
-  const [initialFormData, setInitialFormData] = useState<Partial<any>>({});
+  const [initialFormData, setInitialFormData] = useState<Record<string, unknown>>({});
   const [productFormProductId, setProductFormProductId] = useState<string>("");
   const addToast = useAddToast();
 
@@ -72,8 +72,9 @@ export function InventoryTable({ searchTerm, statusFilter }: InventoryTableProps
       } else {
         addToast({ type: 'error', message: 'Failed to delete product' });
       }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error?.message || 'Failed to delete product';
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: { message?: string } } } };
+      const errorMessage = err.response?.data?.error?.message || 'Failed to delete product';
       addToast({ type: 'error', message: errorMessage });
       console.error('Product deletion failed:', error);
     }

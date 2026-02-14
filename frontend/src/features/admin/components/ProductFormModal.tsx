@@ -108,10 +108,11 @@ export function ProductFormModal({
       queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: { message?: string }; message?: string } } };
       const errorMessage =
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
         'Failed to create product';
       addToast({ type: 'error', message: errorMessage });
       console.error('Product creation failed:', error);
@@ -122,7 +123,8 @@ export function ProductFormModal({
   const updateMutation = useMutation({
     mutationFn: async (data: ProductFormData) => {
       // Remove initialStock from update payload - only used for creation
-      const { initialStock, ...updateData } = data;
+      const { initialStock: _, ...updateData } = data;
+      void _;
       const response = await apiClient.patch(
         `/admin/products/${productId}/`,
         updateData
@@ -134,10 +136,11 @@ export function ProductFormModal({
       queryClient.invalidateQueries({ queryKey: ['admin-inventory'] });
       onClose();
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: { message?: string }; message?: string } } };
       const errorMessage =
-        error.response?.data?.error?.message ||
-        error.response?.data?.message ||
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
         'Failed to update product';
       addToast({ type: 'error', message: errorMessage });
       console.error('Product update failed:', error);

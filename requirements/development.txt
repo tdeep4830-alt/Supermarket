@@ -10,6 +10,9 @@ pytest>=8.0,<9.0
 pytest-django>=4.7,<5.0
 pytest-cov>=4.1,<5.0
 
+# E2E Testing (Playwright)
+pytest-playwright>=0.5,<1.0
+
 # Linting & Formatting (Ref: protocol.md §2C)
 ruff>=0.2,<1.0
 

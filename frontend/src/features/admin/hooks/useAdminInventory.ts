@@ -88,8 +88,9 @@ export function useRestockProduct() {
         newStock: data.data.new_quantity,
       });
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.error?.message || 'Failed to restock product';
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { error?: { message?: string } } } };
+      const message = err.response?.data?.error?.message || 'Failed to restock product';
 
       addToast({
         type: 'error',
