@@ -9,7 +9,8 @@
 #
 #   backend-lint  ──► backend-test  ──┐
 #        │                            ├──► e2e
-#        └────────► frontend-test  ──┘
+#        ├────────► frontend-test  ──┘
+#        └────────► link-check  (frontend only, no backend needed)
 #
 # backend-lint is the FIRST gate. If it fails, all downstream jobs are
 # skipped to save CI minutes (as per user requirement).
@@ -162,6 +163,63 @@ jobs:
 
       - name: TypeScript compile check
         run: npx tsc --noEmit
+
+  # ===========================================================================
+  # Stage 2c — Link Checker (depends on backend-lint, no backend needed)
+  # ===========================================================================
+  link-check:
+    name: "Link Check (Playwright)"
+    runs-on: ubuntu-latest
+    needs: backend-lint          # ← fail-fast gate
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/development.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Python test dependencies
+        run: pip install pytest pytest-playwright
+
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
+
+      - name: Install frontend dependencies & build
+        working-directory: frontend
+        run: npm ci && npx vite build
+
+      - name: Start static preview server
+        working-directory: frontend
+        run: npx serve dist -p 4173 &
+
+      - name: Wait for preview server
+        run: |
+          for i in $(seq 1 15); do
+            if curl -s http://localhost:4173 > /dev/null 2>&1; then
+              echo "Preview server is up"
+              break
+            fi
+            echo "Waiting for preview server... ($i)"
+            sleep 1
+          done
+
+      - name: Run Link Checker
+        working-directory: tests/link_check
+        run: >
+          pytest test_links.py
+          -v --tb=short
+          --browser chromium
 
   # ===========================================================================
   # Stage 3 — E2E (depends on backend-test + frontend-test)
